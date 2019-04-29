@@ -1,6 +1,7 @@
 package aws
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -48,23 +49,26 @@ func resourceAwsIotLogging() *schema.Resource {
 
 func resourceAwsIotLoggingCreate(d *schema.ResourceData, meta interface{}) error {
 	conn := meta.(*AWSClient).iotconn
+
+	roleArn := d.Get("role_arn").(string)
+	logLevel := d.Get("log_level").(string)
+
 	params := &iot.SetV2LoggingOptionsInput{
-		RoleArn:         aws.String(d.Get("role_arn").(string)),
-		DefaultLogLevel: aws.String(d.Get("log_level").(string)),
+		RoleArn:         aws.String(roleArn),
+		DefaultLogLevel: aws.String(logLevel),
 	}
 
 	if v, ok := d.GetOk("disable_all_longs"); ok {
-		params.DisableAllLogs = aws.String(v.(bool))
+		params.DisableAllLogs = aws.Bool(v.(bool))
 	}
 
 	log.Printf("[DEBUG] Setting IoT Logging Options: %s", params)
-	out, err := conn.SetV2LoggingOptions(params)
+	_, err := conn.SetV2LoggingOptions(params)
 	if err != nil {
 		return err
 	}
 
-	d.SetId(*out.ThingName)
-
+	d.SetId(fmt.Sprintf("%s|%s", roleArn, logLevel))
 	return resourceAwsIotLoggingRead(d, meta)
 }
 
@@ -92,6 +96,7 @@ func resourceAwsIotLoggingRead(d *schema.ResourceData, meta interface{}) error {
 }
 
 func resourceAwsIotLoggingUpdate(d *schema.ResourceData, meta interface{}) error {
+
 	return nil
 }
 
