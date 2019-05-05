@@ -14,8 +14,6 @@ func resourceAwsIotLogging() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceAwsIotLoggingCreate,
 		Read:   resourceAwsIotLoggingRead,
-		Update: resourceAwsIotLoggingUpdate,
-		Delete: resourceAwsIotLoggingDelete,
 
 		Importer: &schema.ResourceImporter{
 			State: schema.ImportStatePassthrough,
@@ -25,11 +23,13 @@ func resourceAwsIotLogging() *schema.Resource {
 			"role_arn": {
 				Type:         schema.TypeString,
 				Required:     true,
+				ForceNew:     true,
 				ValidateFunc: validation.StringLenBetween(1, 128),
 			},
 			"log_level": {
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 				ValidateFunc: validation.StringInSlice([]string{
 					"DEBUG",
 					"INFO",
@@ -40,6 +40,7 @@ func resourceAwsIotLogging() *schema.Resource {
 			},
 			"disable_all_logs": {
 				Type:     schema.TypeBool,
+				ForceNew: true,
 				Optional: true,
 				Default:  false,
 			},
@@ -52,14 +53,12 @@ func resourceAwsIotLoggingCreate(d *schema.ResourceData, meta interface{}) error
 
 	roleArn := d.Get("role_arn").(string)
 	logLevel := d.Get("log_level").(string)
+	disableAllLogs := d.Get("disable_all_longs").(bool)
 
 	params := &iot.SetV2LoggingOptionsInput{
 		RoleArn:         aws.String(roleArn),
 		DefaultLogLevel: aws.String(logLevel),
-	}
-
-	if v, ok := d.GetOk("disable_all_longs"); ok {
-		params.DisableAllLogs = aws.Bool(v.(bool))
+		DisableAllLogs:  aws.Bool(disableAllLogs),
 	}
 
 	log.Printf("[DEBUG] Setting IoT Logging Options: %s", params)
@@ -76,7 +75,7 @@ func resourceAwsIotLoggingRead(d *schema.ResourceData, meta interface{}) error {
 	conn := meta.(*AWSClient).iotconn
 
 	params := &iot.GetV2LoggingOptionsInput{}
-	log.Printf("[DEBUG] Reading IoT Logging Options: %s", params)
+	log.Printf("[DEBUG] Retrieving IoT Logging Options: %s", params)
 	out, err := conn.GetV2LoggingOptions(params)
 
 	if err != nil {
@@ -92,14 +91,5 @@ func resourceAwsIotLoggingRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("role_arn", out.RoleArn)
 	d.Set("default_log_level", out.DefaultLogLevel)
 	d.Set("disable_all_logs", out.DisableAllLogs)
-	return nil
-}
-
-func resourceAwsIotLoggingUpdate(d *schema.ResourceData, meta interface{}) error {
-
-	return nil
-}
-
-func resourceAwsIotLoggingDelete(d *schema.ResourceData, meta interface{}) error {
 	return nil
 }
